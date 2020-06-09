@@ -1,8 +1,7 @@
 package com.mini.datastructure.二叉树;
 
+import com.mini.datastructure.二叉树.printer.BinaryTrees;
 import org.junit.Test;
-import 二叉树.printer.BinaryTrees;
-
 /**
  * @author wanghongchao
  * @time 2020/5/19

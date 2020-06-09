@@ -1,6 +1,6 @@
 package com.mini.datastructure.二叉树;
 
-import 二叉树.printer.BinaryTreeInfo;
+import com.mini.datastructure.二叉树.printer.BinaryTreeInfo;
 
 /**
  * @author wanghongchao
