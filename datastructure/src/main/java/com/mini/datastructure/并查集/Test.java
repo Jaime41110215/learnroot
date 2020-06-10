@@ -1,5 +1,7 @@
 package com.mini.datastructure.并查集;
 
+import java.util.Arrays;
+
 /**
  * @author wanghongchao
  * @time 2020/6/4
@@ -9,11 +11,13 @@ public class Test {
     public static void main(String[] args) {
 //        UnionFind uf = new QuickFind(12);
 //        test(new QuickFind(12));
-        test(new QuickUnion_减半(12));
+//        test(new QuickUnion_减半(12));
+        ListUnionFind<Integer> uf = new ListUnionFind<>();
+        test(uf);
     }
 
 
-    public static void test(UnionFind uf){
+    public static void test(ListUnionFind uf){
 
         uf.union(0,1);
         uf.union(1,2);

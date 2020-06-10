@@ -1,5 +1,6 @@
 package com.mini.datastructure.图;
 
+import com.mini.datastructure.并查集.ListUnionFind;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -10,9 +11,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
 import java.util.Stack;
+import java.util.stream.Collectors;
 
 /**
  * @author wanghongchao
@@ -28,6 +31,13 @@ public class ListGraph<V,E extends Comparable<E>> implements Graph<V,E> {
      * 所有边
      */
     private final Set<Edge<V,E>> edges = new HashSet<>();
+
+    private WeightManager<E> weightManager;
+
+
+    public ListGraph(WeightManager<E> weightManager) {
+        this.weightManager = weightManager;
+    }
 
     /**
      * 获取顶点数量
@@ -209,33 +219,148 @@ public class ListGraph<V,E extends Comparable<E>> implements Graph<V,E> {
         List<V> resultList = new ArrayList<>();
         //入度表
         Map<Vertex<V,E>,Integer> inMap = new HashMap<>();
+        Queue<Vertex<V,E>> queue = new LinkedList<>();
+        //Vertex<V, E> zeroIn = null;
         vertices.forEach((key,val)->{
-            inMap.put(val,val.inEdges.size());
+            if(val.inEdges.size() == 0){
+                queue.offer(val);
+            }else {
+                inMap.put(val,val.inEdges.size());
+            }
         });
 
-        while (!inMap.isEmpty()){
-            Vertex<V, E> zeroIn = findZeroIn(inMap);
-            inMap.remove(zeroIn);
+        while (!queue.isEmpty()){
+            Vertex<V, E> zeroIn = queue.poll();
+            //inMap.remove(zeroIn);
             resultList.add(zeroIn.val);
             //更新入度表
             zeroIn.outEdges.forEach(edge->{
                 Vertex<V, E> vertex = vertices.get(edge.to);
-                inMap.put(vertex,inMap.get(vertex)-1);
+                int newCount = inMap.get(vertex) - 1;
+                if(newCount == 0){
+                    queue.offer(vertex);
+                    inMap.remove(vertex);
+                }else {
+                    inMap.put(vertex,inMap.get(vertex)-1);
+                }
             });
         }
         return resultList;
     }
 
-    public Vertex<V,E> findZeroIn(Map<Vertex<V,E>,Integer> inMap){
-        Vertex<V,E> vertex = null;
-        Set<Entry<Vertex<V, E>, Integer>> entries = inMap.entrySet();
-        for (Entry<Vertex<V, E>, Integer> entry : entries) {
-            if(entry.getValue() == 0){
-                vertex = entry.getKey();
-                break;
+    public List<EdgeInfo<V,E>> prim(){
+        Iterator<Vertex<V, E>> iterator = vertices.values().iterator();
+        Vertex<V, E> vertex = null;
+        if(iterator.hasNext()) vertex =iterator.next();
+        if(vertex == null) return null;
+
+        List<EdgeInfo<V,E>> result = new ArrayList<>();
+        List<Vertex<V,E>> addedVertices = new ArrayList<>();
+        addedVertices.add(vertex);
+        PriorityQueue<Edge<V,E>> minHeap = new PriorityQueue<>(vertex.outEdges);
+
+        while (!minHeap.isEmpty() && result.size() < vertices.size()-1){
+            Edge<V, E> poll = minHeap.poll();
+            if(addedVertices.contains(vertices.get(poll.to))){
+                continue;
+            }
+            result.add(poll.getEdgeInfo());
+            addedVertices.add(vertices.get(poll.to));
+            minHeap.addAll(vertices.get(poll.to).outEdges);
+        }
+
+        return result;
+    }
+
+    public List<EdgeInfo<V,E>> kruskal(){
+        List<EdgeInfo<V,E>> result = new ArrayList<>();
+        PriorityQueue<Edge<V,E>> queue = new PriorityQueue<>(edges);
+        Collection<Vertex<V, E>> values = vertices.values();
+        List<V> collect = values.stream().map(vertex -> vertex.val).collect(Collectors.toList());
+        ListUnionFind<V> unionFind = new ListUnionFind<>(collect);
+        while (!queue.isEmpty() && result.size() < vertices.size()-1){
+            Edge<V, E> poll = queue.poll();
+            if(unionFind.isSame(poll.from,poll.to)) continue;
+            result.add(poll.getEdgeInfo());
+            unionFind.union(poll.from,poll.to);
+        }
+
+        return result;
+    }
+
+
+    public Map<V,E> dijkstra(V val){
+        Vertex<V, E> vertex = vertices.get(val);
+        if(vertex == null) return null;
+        Map<V,E> resultMap = new HashMap<>();
+        Map<Vertex<V,E>,E> tmp = new HashMap<>();
+        vertex.outEdges.forEach(edge->{
+            tmp.put(vertices.get(edge.to),edge.weight);
+        });
+
+        while (!tmp.isEmpty()){
+            Vertex<V, E> minVertex = getMinVertex(tmp);
+            resultMap.put(minVertex.val,tmp.get(minVertex));
+            E pw = tmp.get(minVertex);
+            tmp.remove(minVertex);
+            for (Edge<V,E> edge : minVertex.outEdges) {
+                Vertex<V, E> oldVertex = vertices.get(edge.to);
+                if(tmp.containsKey(oldVertex)){
+                    //松弛操作
+                    E oldWeight = tmp.get(oldVertex);
+                    E newWeight = weightManager.add(pw,edge.weight);
+                    if(newWeight.compareTo(oldWeight)<0){
+                        tmp.put(oldVertex,newWeight);
+                    }
+                }else {
+                    tmp.put(vertices.get(edge.to),weightManager.add(pw,edge.weight));
+                }
+            }
+        }
+        return resultMap;
+    }
+
+    private Vertex<V,E> getMinVertex(Map<Vertex<V,E>,E> tmp){
+        Vertex<V,E> vertex;
+        E weight;
+        Iterator<Entry<Vertex<V, E>, E>> iterator = tmp.entrySet().iterator();
+        if(iterator.hasNext()){
+            Entry<Vertex<V, E>, E> next = iterator.next();
+            vertex = next.getKey();
+            weight = next.getValue();
+        }else {
+            return null;
+        }
+        while (iterator.hasNext()){
+            Entry<Vertex<V, E>, E> next = iterator.next();
+            if(next.getValue().compareTo(weight) < 0){
+                vertex = next.getKey();
+                weight = next.getValue();
             }
         }
         return vertex;
+    }
+
+
+
+    public static class EdgeInfo<V,E> {
+        V from;
+        V to;
+        E weight;
+
+        public EdgeInfo(V from, V to) {
+            this.from = from;
+            this.to = to;
+        }
+
+        @Override
+        public String toString() {
+            return "EdgeInfo{" +
+                    "from=" + from +
+                    ", to=" + to +
+                    ", weight=" + weight +
+                    '}';
+        }
     }
 
 
@@ -261,7 +386,7 @@ public class ListGraph<V,E extends Comparable<E>> implements Graph<V,E> {
         }
     }
 
-    private static class Edge<V,E extends Comparable<E>> {
+    private static class Edge<V,E extends Comparable<E>> implements Comparable<Edge<V,E>> {
         V from;
         V to;
         E weight;
@@ -294,6 +419,17 @@ public class ListGraph<V,E extends Comparable<E>> implements Graph<V,E> {
         public String toString() {
             return "Edge{" + from + "=>" + to + ":" + weight + "}";
         }
+
+        public EdgeInfo<V,E> getEdgeInfo(){
+            EdgeInfo<V,E> edgeInfo = new EdgeInfo<>(from,to);
+            edgeInfo.weight = weight;
+            return edgeInfo;
+        }
+
+        @Override
+        public int compareTo(Edge<V, E> o) {
+            return weight.compareTo(o.weight);
+        }
     }
 
     @Override
@@ -302,5 +438,10 @@ public class ListGraph<V,E extends Comparable<E>> implements Graph<V,E> {
         Collection<Vertex<V, E>> values = vertices.values();
         values.forEach(val-> sb.append(val).append("\r\n"));
         return sb.toString();
+    }
+
+
+    public interface WeightManager<E> {
+        E add(E e1,E e2);
     }
 }
