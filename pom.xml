@@ -23,6 +23,7 @@
     <module>jvm</module>
     <module>datastructure</module>
     <module>activiti</module>
+    <module>app</module>
   </modules>
 
   <name>learn-root</name>
